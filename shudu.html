@@ -1,0 +1,385 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>sudoku | 燕十三</title>
+    <script type="text/javascript" src="assets/jquery-3.1.1.min.js"></script>
+    <style type="text/css">
+        body {
+            margin-top: 10%;
+            margin-left: 20%;
+        }
+        table {
+            border-collapse: collapse;
+        }
+        .input_text {
+            width: 30px;
+            height: 30px;
+            text-align: center;
+        }
+        tr.row_border td {
+            border-top: 4px solid #9e9e9e;
+            padding-top: 4px;
+        }
+        td.col_border {
+            border-left: 4px solid #9e9e9e;
+            padding-left: 4px;
+        }
+        .question {
+            background-color: antiquewhite;
+        }
+        .err_fill {
+            background-color: red;   
+        }
+        #main {
+            float: left;
+        }
+        #control {
+            float: left;
+            padding-left: 10px;
+        }
+    </style>
+</head>
+<body>
+<div id="main">
+    <table></table>
+</div>
+<div id="control">
+<p><input type="button" id="generate" value="更换一题"></p>
+<p><input type="button" id="reset" value="重置盘面"></p>
+<p><input type="button" id="clear" value="清空盘面"></p>
+<p><input type="button" id="test" value="输入测试"></p>
+<p><input type="button" id="solve" value="生成答案"></p>
+</div>
+<script type="text/javascript">
+    var maxGenerate = 81;
+    var shudu = {
+        originCandidate: [1,2,3,4,5,6,7,8,9],
+        origin: [],
+        originResult: [],
+        load: function() {
+            var inputValue = [];
+            $("table input").each(function(k, v) {
+                var intValue = parseInt($(v).val());
+                if (isNaN(intValue)) intValue = 0;
+                inputValue.push(intValue);
+            });
+            return inputValue;
+        },
+        validate: function() {
+            var inputResult = [];
+            inputResult = this.load();
+            if (inputResult.length !== this.originResult.length) {
+                return false;
+            }
+            for (var i = 0; i < maxGenerate; i++) {
+                if (inputResult[i] !== this.originResult[i]) {
+                    return false;
+                }
+            }
+            return true;
+        },
+        solve: function(sudoku) {
+            var _sudoku = sudoku.slice();
+            var backIndex = -1, currentIndex = 0;
+            while (currentIndex < maxGenerate) {
+                if (_sudoku[currentIndex] === 0) {
+                    var candidate = this.getCandidate(_sudoku, currentIndex);
+                    if (candidate.length === 0) {
+                        return -1; // No answer.
+                    }
+                    if (candidate.length === 1) {
+                        _sudoku[currentIndex] = candidate.pop();
+                        if (backIndex !== -1) {
+                            currentIndex = backIndex;
+                            backIndex = -1;
+                            continue;
+                        }
+                    } else {
+                        if (backIndex === -1) {
+                            backIndex = currentIndex;
+                        }
+                    }
+                }
+                currentIndex++;
+                /*if (currentIndex === maxGenerate && backIndex !== -1) {
+                    currentIndex = backIndex;
+                }*/
+            }
+            if (_sudoku.indexOf(0) !== -1) {
+                return -1;
+            }
+            return _sudoku;
+        },
+        generate: function() {
+            var genResult = [];
+            var generateCount = 0;
+            while (generateCount < maxGenerate) {
+                var randResult = this.getRandValue(genResult, generateCount);
+                if (randResult != -1) {
+                    genResult[generateCount] = randResult;
+                    generateCount++;
+                } else {
+                    genResult = [];
+                    generateCount = 0;
+                }
+            }
+
+            // 从终盘中挖洞
+            var leftCount = maxGenerate;
+            while (leftCount > 36) {
+                var digSuccess = false;
+                var arrRandIndex = [];
+                for (var x=0; x < maxGenerate; x++) {
+                    arrRandIndex.push(x);
+                }
+                arrRandIndex = shuffle(arrRandIndex);
+                for (var i=0; i < maxGenerate; i++) {
+                    var digIndex = arrRandIndex[i];
+                    var _data = genResult.slice();
+                    if (_data[digIndex] > 0) {
+                        _data[digIndex] = 0;
+                        if (this.solve(_data) !== -1) {
+                            genResult[digIndex] = 0;
+                            leftCount--;
+                            digSuccess = true;
+                            break;
+                        }
+                    }
+                }
+                if (!digSuccess) {
+                    break;
+                }
+            }
+            this.origin = genResult;
+            this.originResult = this.solve(this.origin);
+            return genResult;
+        },
+        getRandValue: function(sudoku, index) {
+
+            var candidate = this.getCandidate(sudoku, index);
+            if (candidate.length < 1) {
+                return -1;
+            }
+            if (candidate.length === 1) {
+                return candidate.pop();
+            }
+            return shuffle(candidate).shift();
+        },
+        getCandidate: function(sudoku, index) {
+            var _sudoku = sudoku.slice();
+            _sudoku[index] = 0;
+            var length = 9;
+            var candidate = this.originCandidate.slice();
+            var row = Math.floor(index / length);
+            var col = index % length;
+
+            var i, j, pickPos, key;
+            for (i = 0; i < length; i++) {
+                key = row * length + i;
+                if (_sudoku[key] > 0) {
+                    pickPos = candidate.indexOf(_sudoku[key]);
+                    if (pickPos !== -1) {
+                        candidate.splice(pickPos, 1);
+                    }
+                }
+            }
+
+            for (j = 0; j < length; j++) {
+                key = j*length + col;
+                if (_sudoku[key] > 0) {
+                    pickPos = candidate.indexOf(_sudoku[key]);
+                    if (pickPos !== -1) {
+                        candidate.splice(pickPos, 1);
+                    }
+                }
+            }
+
+            var zoneSize = 3;
+            var zoneRow = Math.floor(row / zoneSize);
+            var zoneCol = Math.floor(col / zoneSize);
+            for (i = 0; i < zoneSize; i++) {
+                for (j = 0; j < zoneSize; j++) {
+                    key = (zoneRow * zoneSize + i) * length + (zoneCol * zoneSize + j);
+                    pickPos = candidate.indexOf(_sudoku[key]);
+                    if (pickPos !== -1) {
+                        candidate.splice(pickPos, 1);
+                    }
+                }
+            }
+            return candidate;
+        }
+    };
+
+    var game = {};
+
+    game.preload = function () {
+        var htmlTr = '', lineEnd = '', row = 0, col = 0;
+        for (var i=0; i < maxGenerate; i++) {
+
+            var value = '<input class="input_text" type="text" value="">';
+            var trClass, tdClass;
+            col = i % 9;
+            if (col === 0) {
+                if (row > 0 && row % 3 === 0) {
+                    trClass = ' class="row_border"';
+                } else {
+                    trClass = '';
+                }
+                htmlTr += lineEnd + '<tr' + trClass + '>' +
+                '<td>' + value + '</td>';
+                row++;
+            } else {
+                if (col % 3 === 0) {
+                    tdClass = ' class="col_border"';
+                } else {
+                    tdClass = '';
+                }
+                htmlTr += '<td' + tdClass + '>' + value + '</td>';
+            }
+            lineEnd = "</tr>\n";
+        }
+        htmlTr = htmlTr != ''? htmlTr + '</tr>' : '';
+        $('table').append(htmlTr);
+    };
+
+    game.create = function () {
+        var shuduData = shudu.generate();
+        $("table input").each(function(k, v) {
+            $(v).removeClass('question');
+            $(v).removeAttr('disabled');
+            if (shuduData[k] === 0) {
+                $(v).val('');
+            } else {
+                $(v).val(shuduData[k])
+                $(v).addClass('question');
+                $(v).attr('disabled', 'disabled');
+            }
+        });
+    };
+
+    game.update = function () {
+    };
+
+    // Returns a random number between min (inclusive) and max (exclusive)
+    function getRandomInt(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function shuffle(array) {
+        var currentIndex = array.length, temporaryValue, randomIndex;
+
+        // While there remain elements to shuffle...
+        while (0 !== currentIndex) {
+
+            // Pick a remaining element...
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex -= 1;
+
+            // And swap it with the current element.
+            temporaryValue = array[currentIndex];
+            array[currentIndex] = array[randomIndex];
+            array[randomIndex] = temporaryValue;
+        }
+
+        return array;
+    }
+
+    $("#generate").click(function() {
+        game.create();
+    });
+    $("#solve").click(function() {
+        var result = shudu.solve(shudu.load());
+        if (result !== -1) {
+            $("table input").each(function(k, v) {
+                $(v).val(result[k]);
+            });
+            alert('解题成功');
+        } else {
+            alert('计算失败');
+        }
+    });
+    $("#clear").click(function() {
+        shudu.originResult = [];
+        $("table input").each(function(k, v) {
+            $(v).val('');
+            $(v).removeClass('question');
+            $(v).removeAttr('disabled');
+        });
+    });
+    $("#reset").click(function() {
+        $("table input").each(function(k, v) {
+            $(v).removeClass('err_fill');
+            if (shudu.origin[k] === 0) {
+                $(v).val('');
+            } else {
+                $(v).val(shudu.origin[k]);
+            }
+        });
+    });
+    $("#test").click(function() {
+        /*var test = [8,0,4,0,6,0,0,9,0,
+            2,0,0,5,0,7,0,3,0,
+            0,7,0,0,0,9,4,6,0,
+            0,5,8,0,9,0,0,1,0,
+            0,0,7,2,1,0,8,0,0,
+            0,6,0,0,3,0,7,4,0,
+            0,1,5,9,0,0,0,2,0,
+            0,8,0,6,0,1,0,0,5,
+            0,2,0,0,5,0,6,0,1];*/
+        var test = [
+        0,3,0,0,4,0,1,0,6,
+        6,0,0,0,8,1,0,2,0,
+        2,0,7,0,6,0,0,3,0,
+        9,0,0,0,3,0,8,6,0,
+        1,0,0,4,0,6,0,0,2,
+        0,6,2,8,0,0,0,0,7,
+        0,4,0,0,2,0,9,0,3,
+        0,9,0,7,5,0,0,0,1,
+        7,0,8,0,1,0,0,4,0 
+        ];
+        $("table input").each(function(k, v) {
+            if (test[k] === 0) {
+                $(v).val('');
+            } else {
+                $(v).val(test[k]);
+            }
+        });
+    });
+
+    $(document).ready(function() {
+        game.preload();
+        game.create();
+
+        $("table input").each(function(k, obj) {
+            $(obj).change(function() {
+                $(this).removeClass('err_fill');
+                var fill = parseInt($(this).val());
+                if (isNaN(fill)) {
+                    return;
+                }
+
+                if (shudu.originResult.length > 0) {
+                    if (fill != shudu.originResult[k]) {
+                        $(this).addClass('err_fill');
+                        return false;
+                    }
+
+                    var inputResult = shudu.load();
+                    if (inputResult.indexOf(0) === -1) {
+                        if (shudu.validate()) {
+                            alert('恭喜，结果正确');
+                        }
+                    }
+                }
+            });
+        });
+    });
+</script>
+
+</body>
+</html>
+
+
