@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8" />
-    <title>sudoku | 燕十三</title>
+    <title>sudoku</title>
     <script type="text/javascript" src="assets/jquery-3.1.1.min.js"></script>
     <style type="text/css">
         body {
@@ -29,7 +29,7 @@
             background-color: antiquewhite;
         }
         .err_fill {
-            background-color: red;   
+            background-color: red;
         }
         #main {
             float: left;
@@ -45,11 +45,11 @@
     <table></table>
 </div>
 <div id="control">
-<p><input type="button" id="generate" value="更换一题"></p>
-<p><input type="button" id="reset" value="重置盘面"></p>
-<p><input type="button" id="clear" value="清空盘面"></p>
-<p><input type="button" id="test" value="输入测试"></p>
-<p><input type="button" id="solve" value="生成答案"></p>
+    <p><input type="button" id="generate" value="更换一题"></p>
+    <p><input type="button" id="reset" value="重置盘面"></p>
+    <p><input type="button" id="clear" value="清空盘面"></p>
+    <p><input type="button" id="test" value="输入测试"></p>
+    <p><input type="button" id="solve" value="生成答案"></p>
 </div>
 <script type="text/javascript">
     var maxGenerate = 81;
@@ -79,17 +79,17 @@
             }
             return true;
         },
-        solve: function(sudoku) {
-            var _sudoku = sudoku.slice();
+        trySolve: function(_sudoku) {
+            var candidate = [];
             var backIndex = -1, currentIndex = 0;
             while (currentIndex < maxGenerate) {
                 if (_sudoku[currentIndex] === 0) {
-                    var candidate = this.getCandidate(_sudoku, currentIndex);
-                    if (candidate.length === 0) {
+                    candidate[currentIndex] = this.getCandidate(_sudoku, currentIndex);
+                    if (candidate[currentIndex].length === 0) {
                         return -1; // No answer.
                     }
-                    if (candidate.length === 1) {
-                        _sudoku[currentIndex] = candidate.pop();
+                    if (candidate[currentIndex].length === 1) {
+                        _sudoku[currentIndex] = candidate[currentIndex].pop();
                         if (backIndex !== -1) {
                             currentIndex = backIndex;
                             backIndex = -1;
@@ -101,15 +101,37 @@
                         }
                     }
                 }
+                else {
+                    candidate[currentIndex] = [];
+                }
                 currentIndex++;
-                /*if (currentIndex === maxGenerate && backIndex !== -1) {
-                    currentIndex = backIndex;
-                }*/
             }
-            if (_sudoku.indexOf(0) !== -1) {
-                return -1;
+            return candidate;
+        },
+        solve: function(_sudoku) {
+            var sudoku = _sudoku.slice();
+            var candidate = this.trySolve(sudoku);
+            var backupSudoku = sudoku.slice();
+            if (sudoku.indexOf(0) !== -1) {
+                for (var i = 0; i < maxGenerate; i++) {
+                    if (sudoku[i] === 0)
+                    for (var j = 0; j < candidate[i].length; j++) {
+                        sudoku[i] = candidate[i][j];
+                        this.trySolve(sudoku);
+                        if (sudoku.indexOf(0) !== -1) {
+                            sudoku = backupSudoku.slice();
+                        }
+                        else
+                        {
+                            return sudoku;
+                        }
+                    }
+                }
             }
-            return _sudoku;
+            else {
+                return sudoku;
+            }
+            return -1;
         },
         generate: function() {
             var genResult = [];
@@ -321,24 +343,24 @@
     });
     $("#test").click(function() {
         /*var test = [8,0,4,0,6,0,0,9,0,
-            2,0,0,5,0,7,0,3,0,
-            0,7,0,0,0,9,4,6,0,
-            0,5,8,0,9,0,0,1,0,
-            0,0,7,2,1,0,8,0,0,
-            0,6,0,0,3,0,7,4,0,
-            0,1,5,9,0,0,0,2,0,
-            0,8,0,6,0,1,0,0,5,
-            0,2,0,0,5,0,6,0,1];*/
+         2,0,0,5,0,7,0,3,0,
+         0,7,0,0,0,9,4,6,0,
+         0,5,8,0,9,0,0,1,0,
+         0,0,7,2,1,0,8,0,0,
+         0,6,0,0,3,0,7,4,0,
+         0,1,5,9,0,0,0,2,0,
+         0,8,0,6,0,1,0,0,5,
+         0,2,0,0,5,0,6,0,1];*/
         var test = [
-        0,3,0,0,4,0,1,0,6,
-        6,0,0,0,8,1,0,2,0,
-        2,0,7,0,6,0,0,3,0,
-        9,0,0,0,3,0,8,6,0,
-        1,0,0,4,0,6,0,0,2,
-        0,6,2,8,0,0,0,0,7,
-        0,4,0,0,2,0,9,0,3,
-        0,9,0,7,5,0,0,0,1,
-        7,0,8,0,1,0,0,4,0 
+            0,0,0,0,0,0,0,3,0,
+            2,4,0,0,8,7,0,0,0,
+            6,0,5,4,1,0,0,0,0,
+            0,8,0,0,0,9,7,2,6,
+            0,0,6,0,0,0,1,0,0,
+            5,2,1,7,0,0,0,8,0,
+            0,0,0,0,2,4,9,0,8,
+            0,0,0,6,9,0,0,1,7,
+            0,6,0,0,0,0,0,0,0
         ];
         $("table input").each(function(k, v) {
             if (test[k] === 0) {
@@ -381,5 +403,4 @@
 
 </body>
 </html>
-
 
